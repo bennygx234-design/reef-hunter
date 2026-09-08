@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="./style.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐟</text></svg>" />
   <script type="importmap">
-    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
   </script>
 </head>
 <body>
@@ -47,9 +47,9 @@
   <section class="screen" id="screen-reef">
     <h1 class="screen-title">SELECT A REEF</h1>
     <div class="map">
-      <button class="pin" id="pin-cove" data-reef="cove"><span class="dot c1"></span><div class="card"><b>CORAL COVE</b><span>Easy · 5-10 m</span><span class="best"></span></div></button>
-      <button class="pin" id="pin-kelp" data-reef="kelp"><span class="dot c2"></span><div class="card"><b>KELP FOREST</b><span>Medium · 10-15 m</span><span class="best"></span></div></button>
-      <button class="pin" id="pin-wreck" data-reef="wreck"><span class="dot c3"></span><div class="card"><b>THE WRECK</b><span>Hard · 25-30 m</span><span class="best"></span></div></button>
+      <button class="pin" id="pin-cove" data-reef="cove"><span class="dot c1"></span><div class="card"><img src="./assets/thumb_cove.jpg" alt=""><b>CORAL COVE</b><span>Easy · 5-10 m</span><span class="best"></span></div></button>
+      <button class="pin" id="pin-kelp" data-reef="kelp"><span class="dot c2"></span><div class="card"><img src="./assets/thumb_kelp.jpg" alt=""><b>KELP FOREST</b><span>Medium · 10-15 m</span><span class="best"></span></div></button>
+      <button class="pin" id="pin-wreck" data-reef="wreck"><span class="dot c3"></span><div class="card"><img src="./assets/thumb_wreck.jpg" alt=""><b>THE WRECK</b><span>Hard · 25-30 m</span><span class="best"></span></div></button>
     </div>
     <p class="hint bottom">Click a pin to dive there. Deeper reefs hold bigger fish and bigger points.</p>
   </section>
@@ -64,6 +64,15 @@
       <button class="btn primary big" id="btn-dive">DIVE ↓</button>
     </div>
     <p class="hint bottom">A fish heavier than the gun can hold tears off the spear. Match the gun to the reef.</p>
+  </section>
+
+  <!-- Loading -->
+  <section class="screen" id="screen-loading">
+    <div class="panel">
+      <h1>LOADING REEF</h1>
+      <p class="hint" id="loading-text">Fetching 3D models…</p>
+      <div class="bar big"><i id="loading-bar" style="width:0%"></i></div>
+    </div>
   </section>
 
   <!-- Pause -->

@@ -1,0 +1,33 @@
+{
+  "_note": "Higgsfield job ids for the generated 3D models (Tripo H3.1 image-to-3D). Reference images were Nano Banana Pro product shots on white.",
+  "guns": {
+    "carbon": "0c5b7c71-fb39-43a0-9a8e-0c5d5ced99da",
+    "pneu": "98b4db8c-f740-40f4-8bfa-96afc898834a",
+    "wood_image": "2ec95bd1-12ff-4ab3-803c-a6575e25f944"
+  },
+  "structures": {
+    "wreck": "4ee5b1ab-ab71-4c39-ae2e-89269f11403d",
+    "brain": "557bf706-661c-4744-a897-59dcf1426235",
+    "fan": "bac2cd72-f2f5-4e06-983b-bf7049c39a4d",
+    "staghorn": "7d26c75c-a423-4c4f-92d9-f8a2f6aba2ac",
+    "table": "4a402f0e-0106-4219-8f1d-ae06a339053e",
+    "rock": "8916fa68-c9d8-4a5d-926d-e8d187d482a7",
+    "kelp": "02b7edc8-63c3-4c31-ac45-c3f02d6c50e3",
+    "urchin": "e4ed6fe3-034b-47c5-a117-638c1915b406",
+    "sponge": "1953c21a-4608-43b2-9536-30e4258c1d12"
+  },
+  "fish": {
+    "snapper": "96094e40-09c4-4f4a-8a28-4afde7b4100f",
+    "angel": "09f5ca82-0339-402e-b4f3-469e978e88fd",
+    "parrot": "312ee844-2158-4305-95b6-3eecf02cbe60",
+    "redgrouper": "742ee6ea-0d83-49ff-8b6f-281c9bfa6039",
+    "sheepshead": "48d6537a-e6f1-4135-a8aa-c4a32a55901a",
+    "seabass": "81166583-685e-4c7c-b55f-86987bf7e311",
+    "kingfish": "30921ada-d3d1-4d3c-b6fb-9fb6bb6dd2ec",
+    "halibut": "68eb29b2-32a8-4067-8443-83b1bc7b82e6",
+    "tuna": "f9986fb4-ca92-41a6-9577-827d294b07d9",
+    "shark": "7f1d5981-2d38-4cda-8213-57e34b74dc39",
+    "jack": "a3144408-5f45-4eb8-b5cc-ebdf3ca4768b",
+    "giantgrouper": "a195f5ce-2e72-481d-8a21-718c6822df93"
+  }
+}

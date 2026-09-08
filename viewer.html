@@ -1,0 +1,45 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Model viewer</title>
+<style>body{margin:0;background:#223;color:#fff;font-family:sans-serif}#info{position:fixed;top:8px;left:8px;background:rgba(0,0,0,.5);padding:6px 10px;font-size:13px;white-space:pre}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head><body><div id="info">loading</div>
+<script type="module">
+import * as THREE from 'three';
+import { loadGLB, normalise } from './assets.js';
+// ?m=a,b,c  shows several models in a grid, each normalised: red arrow = +x (front), green = +y, blue = +z
+// ?flip=a,b  flips those models. ?axis=y:kelp,sponge  uses upright normalising for those.
+const q = new URLSearchParams(location.search);
+const names = (q.get('m') || 'carbon,pneu').split(',');
+const flips = new Set((q.get('flip') || '').split(',').filter(Boolean));
+const uprights = new Set((q.get('up') || '').split(',').filter(Boolean));
+const view = q.get('view') || 'side';
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight); renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x223344);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
+const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(2, 4, 3); scene.add(sun);
+const cols = Math.ceil(Math.sqrt(names.length));
+const rows = Math.ceil(names.length / cols);
+const cell = 1.4;
+const cam = new THREE.OrthographicCamera(-cols * cell / 2, cols * cell / 2, rows * cell / 2, -rows * cell / 2, 0.01, 100);
+if (view === 'top') cam.position.set(0, 10, 0.0001); else cam.position.set(0, 0, 10);
+cam.lookAt(0, 0, 0);
+const info = [];
+for (let i = 0; i < names.length; i++) {
+  const n = names[i];
+  try {
+    const root = await loadGLB(n);
+    const wrap = normalise(root, { flip: flips.has(n), axis: uprights.has(n) ? 'y' : 'x' });
+    const x = (i % cols - (cols - 1) / 2) * cell, y = ((rows - 1) / 2 - Math.floor(i / cols)) * cell;
+    wrap.position.set(x, uprights.has(n) ? y - 0.5 : y, 0);
+    scene.add(wrap);
+    const ax = new THREE.AxesHelper(0.55); ax.position.set(x, y, 0); scene.add(ax);
+    const s = wrap.userData.size;
+    info.push(`${i}:${n} ${s.x.toFixed(2)}x${s.y.toFixed(2)}x${s.z.toFixed(2)}`);
+  } catch (e) { info.push(`${i}:${n} FAILED ${e.message || e}`); }
+}
+document.getElementById('info').textContent = `grid ${cols}x${rows}, left→right, top→bottom. red=+x(front) green=+y blue=+z\n` + info.join('\n');
+renderer.render(scene, cam);
+window.__ready = true;
+</script></body></html>

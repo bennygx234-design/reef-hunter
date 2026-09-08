@@ -22,19 +22,19 @@ export const REEFS = [
   {
     id: 'cove', name: 'CORAL COVE', difficulty: 'Easy', depthLabel: '5-10 m', floorDepth: 9,
     kind: 'coral', fog: 0x1d8fb3, fogDensity: 0.030, sand: 0xd8c79c, sun: 1.35, diveTime: 150,
-    fish: [['snapper', 22, true], ['angel', 12, true], ['parrot', 8, false], ['redgrouper', 6, false]],
+    fish: [['snapper', 28, true], ['angel', 14, true], ['parrot', 12, false], ['redgrouper', 8, false]],
     pin: { x: 22, y: 56 },
   },
   {
     id: 'kelp', name: 'KELP FOREST', difficulty: 'Medium', depthLabel: '10-15 m', floorDepth: 14,
     kind: 'kelp', fog: 0x0f5c4c, fogDensity: 0.036, sand: 0x8a8f6e, sun: 0.95, diveTime: 150,
-    fish: [['sheepshead', 14, true], ['seabass', 9, false], ['kingfish', 7, false], ['halibut', 3, false]],
+    fish: [['sheepshead', 18, true], ['seabass', 12, false], ['kingfish', 9, false], ['halibut', 4, false]],
     pin: { x: 62, y: 24 },
   },
   {
     id: 'wreck', name: 'THE WRECK', difficulty: 'Hard', depthLabel: '25-30 m', floorDepth: 28,
     kind: 'wreck', fog: 0x072644, fogDensity: 0.032, sand: 0x5b6470, sun: 0.7, diveTime: 150,
-    fish: [['jack', 16, true], ['amberjack', 8, true], ['giantgrouper', 3, false], ['tuna', 4, false], ['shark', 2, false]],
+    fish: [['jack', 20, true], ['amberjack', 10, true], ['giantgrouper', 4, false], ['tuna', 5, false], ['shark', 2, false]],
     pin: { x: 79, y: 74 },
   },
 ];
@@ -50,12 +50,14 @@ export const SPECIES = {
   kingfish:     { name: 'KINGFISH',        kg: [4, 15],     ptsPerKg: 65,  color: 0xc4ccd6, stripe: 0xe0c040, speed: 3.0 },
   halibut:      { name: 'HALIBUT',         kg: [8, 25],     ptsPerKg: 55,  color: 0x7a6a4a, stripe: 0x9a8a6a, speed: 0.9, flat: true },
   jack:         { name: 'HORSE-EYE JACK',  kg: [2, 6],      ptsPerKg: 70,  color: 0xb7bec4, stripe: 0x6a7278, speed: 2.6, school: true },
-  amberjack:    { name: 'AMBERJACK',       kg: [8, 25],     ptsPerKg: 55,  color: 0x9aa4a8, stripe: 0xd9a730, speed: 2.8, school: true },
+  amberjack:    { name: 'AMBERJACK',       kg: [8, 25],     ptsPerKg: 55,  color: 0x9aa4a8, stripe: 0xd9a730, speed: 2.8, school: true, model: 'kingfish', tint: 0xd8c9a8 },
   giantgrouper: { name: 'GIANT GROUPER',   kg: [20, 60],    ptsPerKg: 45,  color: 0x5a5a4a, stripe: 0x3a3a2a, speed: 0.9, fat: true },
   tuna:         { name: 'BLUEFIN TUNA',    kg: [30, 90],    ptsPerKg: 40,  color: 0x2a3c6a, stripe: 0xb8c4d8, speed: 4.0 },
   shark:        { name: 'REEF SHARK',      kg: [40, 80],    ptsPerKg: 0,   color: 0x6d7b85, stripe: 0xe0e6ea, speed: 2.4, protected: true, penalty: 500 },
 };
 
+// Which 3D model file each species uses (defaults to its own id). Fish lengths in the real
+// world for the weight ranges above are roughly what kgToLength gives.
 export function kgToLength(kg) {
   // Rough real-world fish size: 1 kg is about 45 cm, 60 kg about 1.75 m.
   return 0.45 * Math.cbrt(kg);

@@ -2,8 +2,9 @@
 import * as THREE from 'three';
 import { GUNS, REEFS, SPECIES } from './data.js';
 import { GameAudio } from './audio.js';
-import { buildWorld, WORLD_RADIUS } from './world.js';
+import { buildWorld, WORLD_RADIUS, REEF_MODELS } from './world.js';
 import { FishManager } from './fish.js';
+import { loadGLB, normalise } from './assets.js';
 
 const $ = (s) => document.querySelector(s);
 const audio = new GameAudio();
@@ -46,58 +47,124 @@ function loadBest() {
 }
 function saveBest() { try { localStorage.setItem('reefhunter.best', JSON.stringify(state.best)); } catch (e) {} }
 
-// ---------- Gun view model (what you see in your hands) ----------
-let gunModel = null;
-let gunSpear = null;
-function buildGunModel(gun) {
-  if (gunModel) camera.remove(gunModel);
+// ---------- Gun rig (what you see in your hands) ----------
+// The rig's forward is -z. The real gun model is normalised (front at +x) then turned to face -z.
+// Rubber bands, the spear and the hands are our own so they can animate: bands snap forward on
+// the shot, then a hand pulls them back to the notch while reloading.
+let rig = null;
+const GUN_LEN = { wood: 1.15, carbon: 1.25, pneu: 0.95 };
+function buildGunModel(gun, rawModel) {
+  if (rig) camera.remove(rig.group);
   const g = new THREE.Group();
-  const black = new THREE.MeshLambertMaterial({ color: 0x151515 });
-  const glove = new THREE.MeshLambertMaterial({ color: 0x1b2230 });
-  const steel = new THREE.MeshLambertMaterial({ color: 0xb9c2c9 });
-  let barrel;
-  if (gun.id === 'wood') {
-    barrel = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.05, 0.95), new THREE.MeshLambertMaterial({ color: 0x7a4b25 }));
-    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.05), new THREE.MeshLambertMaterial({ color: 0x4a2c15 }));
-    grip.position.set(0, -0.08, 0.38); g.add(grip);
-    for (const s of [-1, 1]) {
-      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.9, 6), black);
-      band.rotation.x = Math.PI / 2; band.position.set(s * 0.035, 0.01, -0.02); g.add(band);
+  const L = GUN_LEN[gun.id];
+  const model = normalise(rawModel, {});
+  model.rotation.y = Math.PI / 2; // +x front -> -z front
+  model.scale.multiplyScalar(L);
+  g.add(model);
+  const sz = model.userData.size; // normalised size (x = 1)
+  const top = sz.y * L * 0.5;      // approx top of the barrel
+  const muzzleZ = -L / 2, gripZ = L / 2;
+
+  const steel = new THREE.MeshStandardMaterial({ color: 0xb9c2c9, metalness: 0.9, roughness: 0.35 });
+  const rubber = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 });
+  const glove = new THREE.MeshStandardMaterial({ color: 0x1b2230, roughness: 0.95 });
+
+  // Spear: shaft with a flopper tip, lying in the groove on top of the barrel.
+  const spear = new THREE.Group();
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.0045, 0.0045, L + 0.45, 8), steel);
+  shaft.rotation.x = Math.PI / 2; spear.add(shaft);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.06, 8), steel);
+  tip.rotation.x = -Math.PI / 2; tip.position.z = -(L + 0.45) / 2 - 0.03; spear.add(tip);
+  const barb = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.012, 0.05), steel);
+  barb.position.set(0, 0.008, -(L + 0.45) / 2 + 0.1); barb.rotation.x = 0.35; spear.add(barb);
+  spear.position.set(0, top + 0.006, -0.18);
+  g.add(spear);
+
+  // Bands (two rubbers from the muzzle to a wishbone that hooks into the spear notch)
+  const bands = [];
+  const anchors = [new THREE.Vector3(-0.028, top - 0.012, muzzleZ + 0.03), new THREE.Vector3(0.028, top - 0.012, muzzleZ + 0.03)];
+  const notchPos = new THREE.Vector3(0, top + 0.012, gripZ - 0.32);
+  const relaxPos = new THREE.Vector3(0, top - 0.03, muzzleZ + 0.44);
+  const wish = new THREE.Vector3().copy(notchPos);
+  if (gun.id !== 'pneu') {
+    for (let i = 0; i < 2; i++) {
+      const b = new THREE.Mesh(new THREE.CylinderGeometry(0.0075, 0.0075, 1, 8), rubber);
+      g.add(b); bands.push(b);
     }
-  } else if (gun.id === 'carbon') {
-    barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.03, 1.05, 10), black);
-    barrel.rotation.x = Math.PI / 2;
-    const trig = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.05, 0.03), new THREE.MeshLambertMaterial({ color: 0xd42a2a }));
-    trig.position.set(0, -0.05, 0.35); g.add(trig);
-    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.12, 0.045), black);
-    grip.position.set(0, -0.09, 0.4); g.add(grip);
-  } else {
-    barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.055, 1.15, 12), steel);
-    barrel.rotation.x = Math.PI / 2;
-    const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.35, 10), new THREE.MeshLambertMaterial({ color: 0x33393f }));
-    tank.rotation.x = Math.PI / 2; tank.position.set(0, -0.08, 0.15); g.add(tank);
-    const gauge = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.02, 14), new THREE.MeshLambertMaterial({ color: 0xf2f2f2 }));
-    gauge.rotation.z = Math.PI / 2; gauge.position.set(0.07, 0.03, 0.42); g.add(gauge);
-    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.13, 0.05), black);
-    grip.position.set(0, -0.1, 0.48); g.add(grip);
   }
-  g.add(barrel);
-  gunSpear = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 1.35, 6), steel);
-  gunSpear.rotation.x = Math.PI / 2; gunSpear.position.set(0, 0.035, -0.25);
-  g.add(gunSpear);
-  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.08, 6), steel);
-  tip.rotation.x = Math.PI; tip.position.set(0, -0.7, 0); gunSpear.add(tip);
-  // Hands
-  const handF = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.07, 0.11), glove);
-  handF.position.set(0, -0.045, -0.05); g.add(handF);
-  const handB = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.09, 0.1), glove);
-  handB.position.set(0.01, -0.09, 0.42); g.add(handB);
-  const armB = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.5), glove);
-  armB.position.set(0.06, -0.16, 0.75); armB.rotation.x = -0.35; g.add(armB);
-  g.position.set(0.28, -0.24, -0.45);
-  g.rotation.set(0.02, 0.06, 0);
+  const wishbone = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.004, 6, 12), steel);
+  wishbone.visible = gun.id !== 'pneu';
+  g.add(wishbone);
+
+  // Hands: back hand on the grip, front hand under the barrel (this one does the loading).
+  const handB = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), glove);
+  handB.scale.set(0.9, 1, 1.2); handB.position.set(0.01, -sz.y * L * 0.35, gripZ - 0.08); g.add(handB);
+  const armB = new THREE.Mesh(new THREE.CapsuleGeometry(0.04, 0.4, 6, 10), glove);
+  armB.position.set(0.05, -sz.y * L * 0.45 - 0.14, gripZ + 0.3); armB.rotation.x = 1.0; g.add(armB);
+  const handF = new THREE.Group();
+  const palm = new THREE.Mesh(new THREE.SphereGeometry(0.042, 12, 10), glove); palm.scale.set(1, 0.7, 1.3); handF.add(palm);
+  for (let i = 0; i < 4; i++) {
+    const fg = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.045, 4, 8), glove);
+    fg.position.set(-0.027 + i * 0.018, 0.03, -0.01); fg.rotation.x = -0.9; handF.add(fg);
+  }
+  const armF = new THREE.Mesh(new THREE.CapsuleGeometry(0.036, 0.4, 6, 10), glove);
+  armF.position.set(-0.03, -0.09, 0.22); armF.rotation.x = 1.35; handF.add(armF);
+  const holdPos = new THREE.Vector3(0, -sz.y * L * 0.25 - 0.02, muzzleZ + L * 0.45);
+  handF.position.copy(holdPos);
+  g.add(handF);
+
+  g.position.set(0.20, -0.27, -0.52);
+  g.rotation.set(0.0, 0.10, 0);
   camera.add(g);
-  gunModel = g;
+  rig = { group: g, gun, L, spear, bands, wishbone, wish, anchors, notchPos, relaxPos, handF, holdPos, top, muzzleZ, gripZ, snap: 0, spearHome: spear.position.clone() };
+  updateRig(0);
+}
+
+const _dir = new THREE.Vector3(), _mid = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
+function layBand(mesh, a, b) {
+  _dir.subVectors(b, a); const len = _dir.length();
+  _mid.addVectors(a, b).multiplyScalar(0.5);
+  mesh.position.copy(_mid);
+  mesh.quaternion.setFromUnitVectors(_up, _dir.normalize());
+  mesh.scale.set(1, len, 1);
+}
+const ease = (x) => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+// Drives the reload animation. progress = 0 right after the shot, 1 when ready.
+function updateRig(dt) {
+  if (!rig) return;
+  const gun = rig.gun;
+  const loaded = state.reloadLeft <= 0;
+  const progress = loaded ? 1 : 1 - state.reloadLeft / gun.reload;
+  rig.snap = Math.max(0, rig.snap - dt);
+  const handTarget = new THREE.Vector3().copy(rig.holdPos);
+  if (gun.id === 'pneu') {
+    // The spear is pushed into the barrel from the front during the whole reload.
+    const k = ease(progress);
+    rig.spear.visible = progress > 0.04;
+    rig.spear.position.copy(rig.spearHome); rig.spear.position.z -= (1 - k) * 0.9;
+    if (!loaded) { handTarget.set(0.02, rig.top + 0.01, rig.spear.position.z - rig.L / 2 - 0.2); }
+  } else {
+    // Phase A (first 35%): slide the spear into the groove. Phase B: pull the bands back.
+    const a = ease(Math.min(1, progress / 0.35));
+    const b = progress < 0.35 ? 0 : ease((progress - 0.35) / 0.65);
+    rig.spear.visible = progress > 0.04;
+    rig.spear.position.copy(rig.spearHome); rig.spear.position.z -= (1 - a) * 0.6;
+    rig.wish.lerpVectors(rig.relaxPos, rig.notchPos, b);
+    // Right after the shot the loose bands bounce a little.
+    if (rig.snap > 0) { rig.wish.z += Math.sin(rig.snap * 40) * 0.03 * rig.snap; rig.wish.y -= 0.01 * Math.sin(rig.snap * 25); }
+    if (!loaded && progress >= 0.35) {
+      // Hand grabs the wishbone and hauls it back, shaking slightly with the effort.
+      handTarget.set(0.01, rig.wish.y - 0.03, rig.wish.z + 0.04);
+      handTarget.x += Math.sin(clock.t * 60) * 0.003 * b;
+    }
+    rig.wishbone.position.copy(rig.wish);
+    rig.wishbone.rotation.set(Math.PI / 2, 0, 0);
+    rig.bands.forEach((m, i) => layBand(m, rig.anchors[i], rig.wish));
+    // Bands get thinner the more they stretch.
+    const stretch = rig.wish.distanceTo(rig.anchors[0]);
+    rig.bands.forEach((m) => { m.scale.x = m.scale.z = THREE.MathUtils.clamp(1.35 - stretch * 0.6, 0.55, 1.35); });
+  }
+  rig.handF.position.lerp(handTarget, 1 - Math.exp(-dt * 14));
 }
 
 // ---------- Input ----------
@@ -149,13 +216,36 @@ function goGun() {
   document.querySelectorAll('.guncard').forEach((c) => c.classList.toggle('selected', c.dataset.gun === state.gun.id));
 }
 
-function startDive() {
+async function startDive() {
   audio.ensure(); audio.click();
+  if (state.loading) return;
+  state.loading = true;
+  state.screen = 'loading'; show('screen-loading');
+  const fishModels = [...new Set(state.reef.fish.map(([id]) => SPECIES[id].model || id))];
+  const names = [...new Set([state.gun.id, ...REEF_MODELS[state.reef.kind], ...fishModels])];
+  const loaded = {};
+  let done = 0;
+  const bar = $('#loading-bar'), txt = $('#loading-text');
+  bar.style.width = '0%'; txt.textContent = 'Fetching 3D models…';
+  try {
+    await Promise.all(names.map(async (n) => {
+      loaded[n] = await loadGLB(n);
+      done++; bar.style.width = Math.round(done / names.length * 100) + '%';
+      txt.textContent = 'Loaded ' + done + ' of ' + names.length + ' models';
+    }));
+  } catch (e) {
+    state.loading = false;
+    txt.textContent = 'A model failed to load. Check your connection and try again.';
+    setTimeout(goGun, 2500);
+    return;
+  }
+  state.loading = false;
   if (state.world) { state.world.dispose(); state.fishes.dispose(); }
-  state.world = buildWorld(scene, state.reef);
-  state.fishes = new FishManager(scene, state.reef, state.world);
-  buildGunModel(state.gun);
+  state.world = buildWorld(scene, state.reef, loaded);
+  state.fishes = new FishManager(scene, state.reef, state.world, loaded);
+  buildGunModel(state.gun, loaded[state.gun.id]);
   state.spears.forEach((s) => scene.remove(s.mesh)); state.spears = [];
+  state.reeling = [];
   state.score = 0; state.catches = []; state.o2 = 100; state.timeLeft = state.reef.diveTime;
   state.reloadLeft = 0; state.yaw = 0; state.pitch = -0.1;
   camera.position.set(0, -2.2, 22);
@@ -215,12 +305,14 @@ function shoot() {
   state.reloadLeft = gun.reload;
   state.shake = 1;
   audio.shot(gun.power);
-  gunSpear.visible = false;
-  const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
-  const start = camera.position.clone().addScaledVector(dir, 0.6);
-  const right = new THREE.Vector3().crossVectors(dir, camera.up).normalize();
-  start.addScaledVector(right, 0.22).y -= 0.15;
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.4, 6), new THREE.MeshLambertMaterial({ color: 0xc8d0d6 }));
+  if (rig) { rig.snap = 0.5; rig.wish.copy(rig.relaxPos); }
+  const look = new THREE.Vector3(); camera.getWorldDirection(look);
+  const start = camera.position.clone().addScaledVector(look, 0.9);
+  const right = new THREE.Vector3().crossVectors(look, camera.up).normalize();
+  start.addScaledVector(right, 0.18).y -= 0.12;
+  const aim = camera.position.clone().addScaledVector(look, 9);
+  const dir = aim.sub(start).normalize();
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 1.6, 6), new THREE.MeshStandardMaterial({ color: 0xc8d0d6, metalness: 0.9, roughness: 0.3 }));
   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
   mesh.position.copy(start);
   scene.add(mesh);
@@ -298,7 +390,6 @@ function updateReeling(dt) {
     const k = Math.min(1, f.reel / 1.3);
     f.pos.lerp(home, k * 0.15 + dt * 2);
     f.mesh.rotation.z += Math.sin(f.reel * 25) * 0.15;
-    f.mesh.userData.tail.rotation.y = Math.sin(f.reel * 40) * 0.8;
     if (f.reel > 1.4) { state.fishes.remove(f); state.reeling.splice(state.reeling.indexOf(f), 1); }
   }
 }
@@ -333,9 +424,9 @@ function updatePlayer(dt) {
   // Gun bob and kick
   state.bobT += dt * (moving ? 6 : 2);
   state.shake = Math.max(0, state.shake - dt * 5);
-  if (gunModel) {
-    gunModel.position.set(0.28 + Math.sin(state.bobT) * 0.01, -0.24 + Math.abs(Math.cos(state.bobT)) * 0.012 - state.shake * 0.02, -0.45 + state.shake * 0.12);
-    gunModel.rotation.x = 0.02 + state.shake * 0.25;
+  if (rig) {
+    rig.group.position.set(0.20 + Math.sin(state.bobT) * 0.008, -0.27 + Math.abs(Math.cos(state.bobT)) * 0.01 - state.shake * 0.02, -0.52 + state.shake * 0.1);
+    rig.group.rotation.x = state.shake * 0.22;
   }
   // Oxygen: drains underwater, refills at the surface
   const atSurface = camera.position.y > -1.0;
@@ -349,7 +440,7 @@ function updatePlayer(dt) {
   }
   state.timeLeft -= dt;
   state.reloadLeft = Math.max(0, state.reloadLeft - dt);
-  if (gunSpear) gunSpear.visible = state.reloadLeft <= 0;
+  updateRig(dt);
   if (state.o2 <= 0) { state.o2 = 0; endDive('BLACKOUT · Out of oxygen'); }
   else if (state.timeLeft <= 0) { state.timeLeft = 0; endDive('DIVE TIME OVER'); }
 }
@@ -398,6 +489,7 @@ const clock = { t: 0 };
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - lastTime) / 1000);
+  state.fps = state.fps ? state.fps * 0.95 + (1000 / Math.max(1, now - lastTime)) * 0.05 : 60;
   lastTime = now;
   if (state.screen === 'playing') {
     clock.t += dt;
@@ -449,7 +541,7 @@ GUNS.forEach((g) => {
   c.style.setProperty('--accent', g.accent);
   c.innerHTML = `
     <h3>${g.name}</h3>
-    <div class="gunart gun-${g.id}"><span class="shaft"></span><span class="body"></span><span class="grip"></span></div>
+    <div class="gunart"><img src="./assets/gun_${g.id}.png" alt="${g.name}"></div>
     <div class="stat"><span>POWER</span><b>${g.power}</b></div>
     <div class="bar"><i style="width:${g.power}%"></i></div>
     <div class="stat small"><span>RANGE</span><b>${g.range} m</b></div>
