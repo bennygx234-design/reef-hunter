@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reef Hunter — First-Person Spearfishing</title>
+  <meta name="description" content="Reef Hunter: a first-person 3D spearfishing game. Visit three reefs, pick your gun, shoot fish, score by catch size." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800&family=Barlow:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐟</text></svg>" />
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- In-game overlay -->
+  <div id="hud">
+    <div class="hud-tl"><div class="label" id="hud-reef">CORAL COVE</div><div class="sub">DEPTH</div><div class="big" id="hud-depth">6 m</div></div>
+    <div class="hud-tr"><div class="sub">SCORE</div><div class="big" id="hud-score">0</div><div class="sub time">TIME <span id="hud-time">2:30</span></div></div>
+    <div class="hud-bl">
+      <div class="label" id="hud-gun">WOODEN SPEARGUN</div>
+      <div class="sub">POWER <span id="hud-power" class="accent">40%</span></div>
+      <div class="bar"><i id="hud-power-bar"></i></div>
+      <div class="reloadbar"><i id="hud-reload"></i></div>
+    </div>
+    <div class="hud-br"><div class="sub">O2 <span id="hud-o2">100%</span></div><div class="bar o2"><i id="hud-o2-bar"></i></div></div>
+    <div id="crosshair"><span></span><span></span><span></span><span></span></div>
+    <div id="popup"><div id="popup-title">GREAT CATCH!</div><div id="popup-sub"></div><div id="popup-pts"></div></div>
+    <div id="toast"></div>
+  </div>
+
+  <!-- Title -->
+  <section class="screen active" id="screen-title">
+    <div class="title-wrap">
+      <h1>REEF HUNTER</h1>
+      <h2>FIRST-PERSON SPEARFISHING</h2>
+      <button class="btn primary" id="btn-start">PRESS START</button>
+      <p class="hint">Mouse to aim · Click to shoot · WASD to swim · Space up · C down · Shift sprint · Esc pause</p>
+      <p class="hint" id="mobile-note" hidden>This game needs a mouse and keyboard. Open it on a laptop or desktop.</p>
+    </div>
+  </section>
+
+  <!-- Reef select -->
+  <section class="screen" id="screen-reef">
+    <h1 class="screen-title">SELECT A REEF</h1>
+    <div class="map">
+      <button class="pin" id="pin-cove" data-reef="cove"><span class="dot c1"></span><div class="card"><b>CORAL COVE</b><span>Easy · 5-10 m</span><span class="best"></span></div></button>
+      <button class="pin" id="pin-kelp" data-reef="kelp"><span class="dot c2"></span><div class="card"><b>KELP FOREST</b><span>Medium · 10-15 m</span><span class="best"></span></div></button>
+      <button class="pin" id="pin-wreck" data-reef="wreck"><span class="dot c3"></span><div class="card"><b>THE WRECK</b><span>Hard · 25-30 m</span><span class="best"></span></div></button>
+    </div>
+    <p class="hint bottom">Click a pin to dive there. Deeper reefs hold bigger fish and bigger points.</p>
+  </section>
+
+  <!-- Gun select -->
+  <section class="screen" id="screen-gun">
+    <h1 class="screen-title">CHOOSE YOUR GUN</h1>
+    <p class="hint" id="gun-reef-name"></p>
+    <div id="guncards"></div>
+    <div class="row">
+      <button class="btn ghost" id="btn-back-reef">← REEFS</button>
+      <button class="btn primary big" id="btn-dive">DIVE ↓</button>
+    </div>
+    <p class="hint bottom">A fish heavier than the gun can hold tears off the spear. Match the gun to the reef.</p>
+  </section>
+
+  <!-- Pause -->
+  <section class="screen" id="screen-pause">
+    <div class="panel">
+      <h1>PAUSED</h1>
+      <p class="hint">Score so far: <b id="pause-score">0</b></p>
+      <button class="btn primary" id="btn-resume">RESUME</button>
+      <button class="btn ghost" id="btn-end">END DIVE</button>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section class="screen" id="screen-results">
+    <div class="panel results">
+      <h1>DIVE COMPLETE</h1>
+      <p class="reason" id="results-reason"></p>
+      <ul id="results-list"></ul>
+      <p class="rule">BIGGER FISH = MORE POINTS · TROPHY SIZE = 1.5×</p>
+      <div class="total">TOTAL <b id="results-total">0</b></div>
+      <p class="best" id="results-best"></p>
+      <div class="row">
+        <button class="btn ghost" id="btn-title">TITLE</button>
+        <button class="btn ghost" id="btn-change-gun">CHANGE GUN</button>
+        <button class="btn ghost" id="btn-next-reef">NEXT REEF</button>
+        <button class="btn primary" id="btn-again">DIVE AGAIN</button>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
